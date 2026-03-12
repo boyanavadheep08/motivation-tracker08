@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goals — Motitrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);}
+.orb-1{width:500px;height:500px;background:rgba(124,109,250,0.06);top:-15%;left:-5%;}
+.main{position:relative;z-index:1;}
+.goals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;}
+.goal-card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;
+  transition:all 0.3s ease;animation:fadeInUp 0.5s ease forwards;opacity:0;
+  position:relative;overflow:hidden;
+}
+.goal-card:hover{border-color:var(--border2);transform:translateY(-4px);box-shadow:0 16px 40px rgba(0,0,0,0.4);}
+.goal-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:var(--goal-color,var(--accent));border-radius:20px 20px 0 0;
+}
+.goal-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+.goal-icon-wrap{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;background:rgba(255,255,255,0.06);}
+.goal-actions{display:flex;gap:6px;opacity:0;transition:opacity 0.2s;}
+.goal-card:hover .goal-actions{opacity:1;}
+.goal-card-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px;}
+.goal-card-desc{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:16px;}
+.goal-progress-wrap{margin-bottom:16px;}
+.goal-progress-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.goal-progress-label{font-size:13px;color:var(--muted);}
+.goal-progress-pct{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;}
+.progress-bar{height:8px;}
+.topics-list{display:flex;flex-direction:column;gap:6px;}
+.topic-item{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;
+  background:var(--surface);border-radius:8px;font-size:13px;
+  cursor:pointer;transition:all 0.2s;border:1px solid transparent;
+}
+.topic-item:hover{border-color:var(--border2);}
+.topic-item.done{text-decoration:line-through;color:var(--muted);}
+.topic-check{
+  width:18px;height:18px;border-radius:5px;border:1.5px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;flex-shrink:0;transition:all 0.2s;
+}
+.topic-check.done{background:var(--accent3);border-color:var(--accent3);color:#080810;font-weight:bold;}
+.goal-footer{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-top:14px;padding-top:14px;border-top:1px solid var(--border);
+}
+.goal-date{font-size:12px;color:var(--muted);}
+.goal-done-badge{font-size:12px;padding:4px 10px;border-radius:20px;background:rgba(109,250,200,0.15);color:var(--accent3);font-weight:600;}
+.empty-state{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--muted);}
+.empty-state .ei{font-size:64px;margin-bottom:16px;display:block;}
+.empty-state h3{font-family:'Syne',sans-serif;font-size:20px;color:var(--text2);margin-bottom:8px;}
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.color-picker{display:flex;gap:8px;flex-wrap:wrap;}
+.color-swatch{width:28px;height:28px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:all 0.2s;}
+.color-swatch.active{border-color:white;transform:scale(1.15);}
+.icon-picker{display:flex;gap:6px;flex-wrap:wrap;}
+.icon-btn{
+  width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+  background:var(--surface);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all 0.2s;
+}
+.icon-btn:hover,.icon-btn.active{border-color:var(--accent);background:rgba(124,109,250,0.15);}
+.progress-display{text-align:right;font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--accent);}
+input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;background:transparent;border:none;padding:6px 0;}
+.topics-input-list{display:flex;flex-direction:column;gap:6px;}
+.topic-input-row{display:flex;gap:6px;}
+.topic-input-row input{flex:1;}
+.remove-topic{padding:8px 10px;background:rgba(255,87,87,0.1);border:none;color:var(--danger);border-radius:8px;cursor:pointer;}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+</style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb-1"></div></div>
+<div id="navMount"></div>
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🎯 Goals</div>
+      <div class="page-subtitle">Track your long-term objectives</div>
+    </div>
+    <button class="btn btn-primary" onclick="openModal()">+ New Goal</button>
+  </div>
+  <div class="goals-grid" id="goalsGrid">
+    <div class="skeleton" style="height:280px;border-radius:20px"></div>
+    <div class="skeleton" style="height:280px;border-radius:20px"></div>
+    <div class="skeleton" style="height:280px;border-radius:20px"></div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">New Goal</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Goal Title *</label>
+      <input type="text" class="input" id="goalTitle" placeholder="e.g. Web Development, DSA...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea class="input" id="goalDesc" placeholder="What do you want to achieve?" style="min-height:80px"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Progress</label>
+        <div class="progress-display"><span id="progressVal">0</span>%</div>
+        <input type="range" min="0" max="100" value="0" id="goalProgress" oninput="document.getElementById('progressVal').textContent=this.value">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Date</label>
+        <input type="date" class="input" id="goalDate">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Icon</label>
+      <div class="icon-picker" id="iconPicker">
+        <button class="icon-btn active" onclick="selectIcon(this,'🎯')">🎯</button>
+        <button class="icon-btn" onclick="selectIcon(this,'💻')">💻</button>
+        <button class="icon-btn" onclick="selectIcon(this,'📚')">📚</button>
+        <button class="icon-btn" onclick="selectIcon(this,'🏋️')">🏋️</button>
+        <button class="icon-btn" onclick="selectIcon(this,'🎨')">🎨</button>
+        <button class="icon-btn" onclick="selectIcon(this,'🎵')">🎵</button>
+        <button class="icon-btn" onclick="selectIcon(this,'✈️')">✈️</button>
+        <button class="icon-btn" onclick="selectIcon(this,'💡')">💡</button>
+        <button class="icon-btn" onclick="selectIcon(this,'🚀')">🚀</button>
+        <button class="icon-btn" onclick="selectIcon(this,'📊')">📊</button>
+        <button class="icon-btn" onclick="selectIcon(this,'🔬')">🔬</button>
+        <button class="icon-btn" onclick="selectIcon(this,'🌱')">🌱</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Color</label>
+      <div class="color-picker" id="colorPicker">
+        <div class="color-swatch active" style="background:#7c6dfa" onclick="selectColor(this,'#7c6dfa')" data-color="#7c6dfa"></div>
+        <div class="color-swatch" style="background:#fa6d9a" onclick="selectColor(this,'#fa6d9a')" data-color="#fa6d9a"></div>
+        <div class="color-swatch" style="background:#6dfac8" onclick="selectColor(this,'#6dfac8')" data-color="#6dfac8"></div>
+        <div class="color-swatch" style="background:#fac76d" onclick="selectColor(this,'#fac76d')" data-color="#fac76d"></div>
+        <div class="color-swatch" style="background:#fa9c6d" onclick="selectColor(this,'#fa9c6d')" data-color="#fa9c6d"></div>
+        <div class="color-swatch" style="background:#6db8fa" onclick="selectColor(this,'#6db8fa')" data-color="#6db8fa"></div>
+        <div class="color-swatch" style="background:#c26dfa" onclick="selectColor(this,'#c26dfa')" data-color="#c26dfa"></div>
+        <div class="color-swatch" style="background:#fa6d6d" onclick="selectColor(this,'#fa6d6d')" data-color="#fa6d6d"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Topics / Subtasks</label>
+      <div class="topics-input-list" id="topicsInputList">
+        <div class="topic-input-row">
+          <input type="text" class="input" placeholder="e.g. HTML, CSS, JavaScript...">
+          <button class="remove-topic" onclick="removeTopic(this)">✕</button>
+        </div>
+      </div>
+      <button onclick="addTopicInput()" style="margin-top:8px;background:transparent;border:1px dashed var(--border2);color:var(--accent);padding:8px 14px;border-radius:8px;cursor:pointer;width:100%;font-size:13px;">+ Add Topic</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGoal()">Save Goal</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/shared.js"></script>
+<script>
+requireAuth();
+document.getElementById('navMount').innerHTML = renderNav('goals');
+
+let goals=[], editingId=null, selectedIcon='🎯', selectedColor='#7c6dfa';
+
+function selectIcon(btn,icon){
+  document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); selectedIcon=icon;
+}
+function selectColor(el,color){
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active'); selectedColor=color;
+}
+function addTopicInput(){
+  const list=document.getElementById('topicsInputList');
+  const row=document.createElement('div');
+  row.className='topic-input-row';
+  row.innerHTML='<input type="text" class="input" placeholder="Topic name..."><button class="remove-topic" onclick="removeTopic(this)">✕</button>';
+  list.appendChild(row);
+}
+function removeTopic(btn){ btn.parentElement.remove(); }
+function openModal(goal=null){
+  editingId=goal?goal.id:null;
+  document.getElementById('modalTitle').textContent=goal?'Edit Goal':'New Goal';
+  document.getElementById('goalTitle').value=goal?.title||'';
+  document.getElementById('goalDesc').value=goal?.description||'';
+  document.getElementById('goalProgress').value=goal?.progress||0;
+  document.getElementById('progressVal').textContent=goal?.progress||0;
+  document.getElementById('goalDate').value=goal?.target_date?goal.target_date.split('T')[0]:'';
+  const topicsList=document.getElementById('topicsInputList');
+  topicsList.innerHTML='';
+  const show=goal?.topics?.length?goal.topics:[{title:''}];
+  show.forEach(t=>{
+    const row=document.createElement('div');
+    row.className='topic-input-row';
+    row.innerHTML=`<input type="text" class="input" placeholder="Topic name..." value="${t.title||''}"><button class="remove-topic" onclick="removeTopic(this)">✕</button>`;
+    topicsList.appendChild(row);
+  });
+  selectedIcon=goal?.icon||'🎯';
+  document.querySelectorAll('.icon-btn').forEach(b=>b.classList.toggle('active',b.textContent===selectedIcon));
+  selectedColor=goal?.color||'#7c6dfa';
+  document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('active',s.dataset.color===selectedColor));
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('open');
+}
+async function saveGoal(){
+  const title=document.getElementById('goalTitle').value.trim();
+  if(!title) return showToast('Title is required','error');
+  const topics=Array.from(document.querySelectorAll('#topicsInputList input')).map(i=>i.value.trim()).filter(Boolean);
+  const body={title,description:document.getElementById('goalDesc').value,progress:parseInt(document.getElementById('goalProgress').value),target_date:document.getElementById('goalDate').value||null,icon:selectedIcon,color:selectedColor,topics};
+  try{
+    if(editingId){ await apiCall(`/goals/${editingId}`,{method:'PUT',body}); showToast('Goal updated!','success'); }
+    else{ await apiCall('/goals',{method:'POST',body}); showToast('Goal created! 🎯','success'); }
+    closeModal(); loadGoals();
+  }catch(err){ showToast(err.message,'error'); }
+}
+async function deleteGoal(id){
+  if(!confirm('Delete this goal?')) return;
+  try{ await apiCall(`/goals/${id}`,{method:'DELETE'}); showToast('Goal deleted','info'); loadGoals(); }
+  catch(err){ showToast(err.message,'error'); }
+}
+async function toggleTopic(topicId){
+  try{ await apiCall(`/goals/topics/${topicId}`,{method:'PATCH'}); loadGoals(); }
+  catch(err){ showToast('Failed to update topic','error'); }
+}
+function renderGoals(data){
+  const grid=document.getElementById('goalsGrid');
+  if(!data.length){
+    grid.innerHTML=`<div class="empty-state"><span class="ei">🎯</span><h3>No goals yet</h3><p>Set your first goal to start tracking progress</p><br><button class="btn btn-primary" onclick="openModal()">Create Your First Goal</button></div>`;
+    return;
+  }
+  grid.innerHTML=data.map((g,i)=>{
+    const color=g.color||'#7c6dfa';
+    const topicsHTML=g.topics?.length?`<div class="topics-list">${g.topics.map(t=>`<div class="topic-item ${t.is_done?'done':''}" onclick="toggleTopic(${t.id})"><div class="topic-check ${t.is_done?'done':''}">${t.is_done?'✓':''}</div>${t.title}</div>`).join('')}</div>`:'';
+    return `<div class="goal-card" style="--goal-color:${color};animation-delay:${i*0.08}s">
+      <div class="goal-top">
+        <div class="goal-icon-wrap">${g.icon||'🎯'}</div>
+        <div class="goal-actions">
+          <button class="btn btn-ghost btn-icon btn-sm" onclick='openModal(${JSON.stringify(g)})'>✏️</button>
+          <button class="btn btn-danger btn-icon btn-sm" onclick="deleteGoal(${g.id})">🗑️</button>
+        </div>
+      </div>
+      <div class="goal-card-title">${g.title}</div>
+      ${g.description?`<div class="goal-card-desc">${g.description}</div>`:''}
+      <div class="goal-progress-wrap">
+        <div class="goal-progress-top">
+          <span class="goal-progress-label">Progress</span>
+          <span class="goal-progress-pct" style="color:${color}">${g.progress}%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${g.progress}%;background:${color}"></div></div>
+      </div>
+      ${topicsHTML}
+      <div class="goal-footer">
+        <span class="goal-date">${g.target_date?'📅 '+formatDate(g.target_date.split('T')[0]):'No deadline'}</span>
+        ${g.progress>=100?'<span class="goal-done-badge">✅ Completed!</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function loadGoals(){
+  try{ goals=await apiCall('/goals'); renderGoals(goals); }
+  catch(err){ showToast('Failed to load goals','error'); }
+}
+loadGoals();
+</script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statistics — Motitrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);}
+.orb-1{width:600px;height:600px;background:rgba(124,109,250,0.05);top:-20%;right:-10%;}
+.orb-2{width:400px;height:400px;background:rgba(109,250,200,0.04);bottom:-10%;left:10%;}
+.main{position:relative;z-index:1;}
+.period-tabs{display:flex;gap:6px;margin-bottom:24px;}
+.period-tab{
+  padding:7px 16px;border:1px solid var(--border);border-radius:99px;
+  background:transparent;color:var(--muted);font-size:13px;
+  cursor:pointer;font-family:'DM Sans';transition:all 0.2s;
+}
+.period-tab.active{background:var(--accent);border-color:var(--accent);color:white;}
+.summary-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.sum-card{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:20px;text-align:center;
+  animation:fadeInUp 0.5s ease forwards;opacity:0;
+}
+.sum-card .val{font-family:'Syne',sans-serif;font-size:32px;font-weight:800;margin-bottom:4px;}
+.sum-card .lbl{font-size:12px;color:var(--muted);}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.chart-card{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;
+  animation:fadeInUp 0.5s ease forwards;opacity:0;transition:border-color 0.3s;
+}
+.chart-card:hover{border-color:var(--border2);}
+.chart-card.full{grid-column:1/-1;}
+.chart-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;}
+.chart-sub{color:var(--muted);font-size:13px;margin-bottom:20px;}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:900px){
+  .stats-grid{grid-template-columns:1fr;}
+  .summary-stats{grid-template-columns:1fr 1fr;}
+  .chart-card.full{grid-column:1;}
+}
+</style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+<div id="navMount"></div>
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📊 Statistics</div>
+      <div class="page-subtitle">Your performance insights and trends</div>
+    </div>
+  </div>
+  <div class="period-tabs">
+    <button class="period-tab active" onclick="setPeriod(7,this)">7 Days</button>
+    <button class="period-tab" onclick="setPeriod(14,this)">14 Days</button>
+    <button class="period-tab" onclick="setPeriod(30,this)">30 Days</button>
+  </div>
+  <div class="summary-stats">
+    <div class="sum-card" style="animation-delay:0s">
+      <div class="val" id="ss-streak" style="color:var(--accent4)">0🔥</div>
+      <div class="lbl">Current Streak</div>
+    </div>
+    <div class="sum-card" style="animation-delay:0.1s">
+      <div class="val" id="ss-longest" style="color:var(--accent)">0</div>
+      <div class="lbl">Longest Streak</div>
+    </div>
+    <div class="sum-card" style="animation-delay:0.2s">
+      <div class="val" id="ss-tasks" style="color:var(--accent3)">0</div>
+      <div class="lbl">Tasks Completed</div>
+    </div>
+    <div class="sum-card" style="animation-delay:0.3s">
+      <div class="val" id="ss-goals" style="color:var(--accent2)">0%</div>
+      <div class="lbl">Goals Progress</div>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <div class="chart-card full" style="animation-delay:0.1s">
+      <div class="chart-title">Productivity Over Time</div>
+      <div class="chart-sub">Tasks completed vs total per day</div>
+      <canvas id="productivityChart" height="90"></canvas>
+    </div>
+    <div class="chart-card" style="animation-delay:0.2s">
+      <div class="chart-title">Mood Tracker</div>
+      <div class="chart-sub">Daily mood score (1-10)</div>
+      <canvas id="moodChart" height="180"></canvas>
+    </div>
+    <div class="chart-card" style="animation-delay:0.3s">
+      <div class="chart-title">Task Distribution</div>
+      <div class="chart-sub">Status breakdown this period</div>
+      <canvas id="pieChart" height="180"></canvas>
+    </div>
+    <div class="chart-card full" style="animation-delay:0.4s">
+      <div class="chart-title">Goals Progress</div>
+      <div class="chart-sub">Individual goal completion rates</div>
+      <canvas id="goalsChart" height="100"></canvas>
+    </div>
+  </div>
+</main>
+<script src="../js/shared.js"></script>
+<script>
+requireAuth();
+document.getElementById('navMount').innerHTML = renderNav('stats');
+
+let currentPeriod=7, charts={};
+const font={family:'DM Sans',size:12}, grid='rgba(255,255,255,0.04)', tick='#6b6a8a';
+
+function setPeriod(days,btn){
+  currentPeriod=days;
+  document.querySelectorAll('.period-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active'); loadStats();
+}
+function destroy(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+function buildProductivity(data){
+  destroy('prod');
+  const ctx=document.getElementById('productivityChart').getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,200);
+  grad.addColorStop(0,'rgba(124,109,250,0.35)'); grad.addColorStop(1,'rgba(124,109,250,0)');
+  charts.prod=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:data.map(d=>formatDate((d.stat_date||'').split('T')[0])),
+      datasets:[
+        {label:'Completed',data:data.map(d=>d.tasks_completed||0),borderColor:'#7c6dfa',backgroundColor:grad,fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:'#7c6dfa',pointBorderColor:'#080810',pointBorderWidth:2},
+        {label:'Total',data:data.map(d=>d.tasks_total||0),borderColor:'rgba(250,109,154,0.6)',fill:false,tension:0.4,pointRadius:3,borderDash:[6,3]}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{color:tick,font}}},scales:{x:{grid:{color:grid},ticks:{color:tick,font}},y:{grid:{color:grid},ticks:{color:tick,font},beginAtZero:true}}}
+  });
+}
+
+function buildMood(data){
+  destroy('mood');
+  const ctx=document.getElementById('moodChart').getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,200);
+  grad.addColorStop(0,'rgba(250,199,109,0.3)'); grad.addColorStop(1,'rgba(250,199,109,0)');
+  charts.mood=new Chart(ctx,{
+    type:'line',
+    data:{
+      labels:data.map(d=>formatDate((d.stat_date||'').split('T')[0])),
+      datasets:[{label:'Mood',data:data.map(d=>d.mood_score||5),borderColor:'#fac76d',backgroundColor:grad,fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:'#fac76d',pointBorderColor:'#080810',pointBorderWidth:2}]
+    },
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:grid},ticks:{color:tick,font,maxTicksLimit:7}},y:{grid:{color:grid},ticks:{color:tick,font},min:1,max:10}}}
+  });
+}
+
+function buildPie(done,pending){
+  destroy('pie');
+  charts.pie=new Chart(document.getElementById('pieChart').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Completed','Pending'],
+      datasets:[{data:[done,pending],backgroundColor:['rgba(109,250,200,0.8)','rgba(124,109,250,0.7)'],borderColor:'#080810',borderWidth:3}]
+    },
+    options:{responsive:true,cutout:'60%',plugins:{legend:{position:'bottom',labels:{color:tick,font,padding:16}}}}
+  });
+}
+
+function buildGoals(goals){
+  destroy('goals');
+  if(!goals.length) return;
+  charts.goals=new Chart(document.getElementById('goalsChart').getContext('2d'),{
+    type:'bar',
+    data:{
+      labels:goals.map(g=>(g.icon||'🎯')+' '+g.title),
+      datasets:[{label:'Progress %',data:goals.map(g=>g.progress),backgroundColor:goals.map(g=>g.color||'#7c6dfa'),borderRadius:8,borderSkipped:false}]
+    },
+    options:{
+      indexAxis:'y',responsive:true,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{grid:{color:grid},ticks:{color:tick,font,callback:v=>v+'%'},max:100,min:0},
+        y:{grid:{display:false},ticks:{color:tick,font}}
+      }
+    }
+  });
+}
+
+async function loadStats(){
+  try{
+    const [data,goals,overview]=await Promise.all([
+      apiCall(`/stats/productivity?days=${currentPeriod}`),
+      apiCall('/goals'),
+      apiCall('/stats/overview')
+    ]);
+    document.getElementById('ss-streak').textContent=(overview?.streak||0)+'🔥';
+    document.getElementById('ss-longest').textContent=overview?.longestStreak||0;
+    document.getElementById('ss-tasks').textContent=data.reduce((s,d)=>s+(d.tasks_completed||0),0);
+    document.getElementById('ss-goals').textContent=Math.round(overview?.goalsOverview?.avg_progress||0)+'%';
+    buildProductivity(data);
+    buildMood(data);
+    const done=data.reduce((s,d)=>s+(d.tasks_completed||0),0);
+    const total=data.reduce((s,d)=>s+(d.tasks_total||0),0);
+    buildPie(done,Math.max(0,total-done));
+    buildGoals(goals||[]);
+  }catch(err){ showToast('Failed to load statistics','error'); }
+}
+loadStats();
+</script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Today's Work — Motitrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);}
+.orb-1{width:400px;height:400px;background:rgba(109,250,200,0.05);bottom:0;right:0;}
+.main{position:relative;z-index:1;}
+.tasks-layout{display:grid;grid-template-columns:1fr 300px;gap:24px;}
+.date-nav{
+  display:flex;align-items:center;gap:16px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:16px;padding:12px 20px;margin-bottom:24px;
+}
+.date-btn{background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:18px;padding:4px 8px;border-radius:6px;transition:all 0.2s;}
+.date-btn:hover{background:rgba(255,255,255,0.06);}
+.current-date{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;flex:1;text-align:center;}
+.current-day{color:var(--muted);font-size:13px;text-align:center;}
+.filter-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+.filter-tab{
+  padding:7px 16px;border-radius:99px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);font-size:13px;
+  cursor:pointer;font-family:'DM Sans';transition:all 0.2s;
+}
+.filter-tab.active{background:var(--accent);border-color:var(--accent);color:white;}
+.task-big{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:16px 18px;display:flex;align-items:center;gap:14px;
+  transition:all 0.3s ease;animation:fadeInUp 0.4s ease forwards;opacity:0;
+}
+.task-big:hover{border-color:var(--border2);transform:translateX(4px);}
+.task-big.done{opacity:0.6;}
+.task-big.done .task-big-title{text-decoration:line-through;color:var(--muted);}
+.status-circle{
+  width:28px;height:28px;border-radius:50%;border:2px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all 0.3s;font-size:12px;cursor:pointer;
+}
+.status-circle:hover{border-color:var(--accent);background:rgba(124,109,250,0.1);}
+.status-circle.running{background:rgba(250,199,109,0.15);border-color:var(--accent4);color:var(--accent4);}
+.status-circle.done{background:var(--accent3);border-color:var(--accent3);color:#080810;font-weight:bold;}
+.status-circle.skipped{background:rgba(255,87,87,0.1);border-color:var(--danger);color:var(--danger);}
+.task-big-content{flex:1;}
+.task-big-title{font-size:15px;font-weight:500;margin-bottom:3px;}
+.task-meta{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+.task-big-actions{display:flex;gap:6px;opacity:0;transition:opacity 0.2s;}
+.task-big:hover .task-big-actions{opacity:1;}
+.pri-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.pri-dot.high{background:var(--danger);}
+.pri-dot.medium{background:var(--accent4);}
+.pri-dot.low{background:var(--accent3);}
+.summary-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:24px;margin-bottom:20px;}
+.summary-ring{width:120px;height:120px;margin:0 auto 16px;position:relative;}
+.ring-svg{width:100%;height:100%;transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:10;}
+.ring-fill{fill:none;stroke:url(#ringGrad);stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset 1s cubic-bezier(0.16,1,0.3,1);}
+.ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-pct{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;}
+.ring-sub{font-size:11px;color:var(--muted);}
+.stat-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.stat-row:last-child{border-bottom:none;}
+.stat-row span{color:var(--muted);}
+.stat-row strong{font-family:'Syne',sans-serif;font-weight:700;}
+.quick-add{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:16px;display:flex;gap:8px;align-items:center;margin-bottom:16px;
+}
+.quick-add input{flex:1;border:none;background:transparent;color:var(--text);font-size:14px;outline:none;}
+.quick-add input::placeholder{color:var(--muted);}
+.section-header{
+  display:flex;align-items:center;gap:10px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;
+  margin:20px 0 10px;
+}
+.section-header::after{content:'';flex:1;height:1px;background:var(--border);}
+.empty-tasks{text-align:center;padding:48px 20px;color:var(--muted);}
+.empty-tasks .ei{font-size:48px;margin-bottom:12px;display:block;}
+.form-group{margin-bottom:12px;}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+@media(max-width:900px){.tasks-layout{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb-1"></div></div>
+<div id="navMount"></div>
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">✅ Today's Work</div>
+      <div class="page-subtitle">Manage your daily tasks and habits</div>
+    </div>
+  </div>
+  <div class="date-nav">
+    <button class="date-btn" onclick="changeDate(-1)">‹</button>
+    <div style="flex:1;text-align:center">
+      <div class="current-date" id="currentDateDisplay">—</div>
+      <div class="current-day" id="currentDayDisplay">—</div>
+    </div>
+    <button class="date-btn" onclick="changeDate(1)">›</button>
+    <button class="btn btn-ghost btn-sm" onclick="setToday()">Today</button>
+  </div>
+  <div class="filter-tabs">
+    <button class="filter-tab active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-tab" onclick="setFilter('daily',this)">Daily</button>
+    <button class="filter-tab" onclick="setFilter('weekly',this)">Weekly</button>
+    <button class="filter-tab" onclick="setFilter('habit',this)">Habits</button>
+    <button class="filter-tab" onclick="setFilter('pending',this)">Pending</button>
+    <button class="filter-tab" onclick="setFilter('done',this)">Done</button>
+  </div>
+  <div class="tasks-layout">
+    <div>
+      <div class="quick-add">
+        <span>➕</span>
+        <input type="text" id="quickAddInput" placeholder="Add a task... (press Enter)" onkeydown="if(event.key==='Enter')quickAdd()">
+        <button class="btn btn-primary btn-sm" onclick="quickAdd()">Add</button>
+      </div>
+      <div id="taskContainer"></div>
+    </div>
+    <div>
+      <div class="summary-card">
+        <div style="font-family:'Syne';font-size:14px;font-weight:700;margin-bottom:16px;text-align:center">Today's Progress</div>
+        <div class="summary-ring">
+          <svg class="ring-svg" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%">
+                <stop offset="0%" stop-color="#7c6dfa"/>
+                <stop offset="100%" stop-color="#fa6d9a"/>
+              </linearGradient>
+            </defs>
+            <circle class="ring-bg" cx="60" cy="60" r="50"/>
+            <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="50" stroke-dasharray="314" stroke-dashoffset="314"/>
+          </svg>
+          <div class="ring-text">
+            <div class="ring-pct" id="ringPct">0%</div>
+            <div class="ring-sub">done</div>
+          </div>
+        </div>
+        <div class="stat-row"><span>Total</span><strong id="sumTotal">0</strong></div>
+        <div class="stat-row"><span>Done</span><strong style="color:var(--accent3)" id="sumDone">0</strong></div>
+        <div class="stat-row"><span>Running</span><strong style="color:var(--accent4)" id="sumRunning">0</strong></div>
+        <div class="stat-row"><span>Pending</span><strong style="color:var(--muted)" id="sumPending">0</strong></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Add Task</div>
+        <div class="form-group">
+          <input type="text" class="input" id="taskTitle" placeholder="Task title">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <select class="input" id="taskType" style="font-size:13px">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="habit">Habit</option>
+          </select>
+          <select class="input" id="taskPriority" style="font-size:13px">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="addTask()">+ Add Task</button>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="../js/shared.js"></script>
+<script>
+requireAuth();
+document.getElementById('navMount').innerHTML = renderNav('tasks');
+
+let currentDate=today(), allTasks=[], currentFilter='all';
+
+function setToday(){ currentDate=today(); updateDateDisplay(); loadTasks(); }
+function changeDate(d){
+  const dt=new Date(currentDate+'T00:00:00');
+  dt.setDate(dt.getDate()+d);
+  currentDate=dt.toISOString().split('T')[0];
+  updateDateDisplay(); loadTasks();
+}
+function updateDateDisplay(){
+  const d=new Date(currentDate+'T00:00:00');
+  document.getElementById('currentDateDisplay').textContent=d.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('currentDayDisplay').textContent=d.toLocaleDateString('en-US',{weekday:'long'});
+}
+function setFilter(filter,btn){
+  currentFilter=filter;
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active'); renderTasks();
+}
+function getFiltered(){
+  if(currentFilter==='all') return allTasks;
+  if(['daily','weekly','habit'].includes(currentFilter)) return allTasks.filter(t=>t.type===currentFilter);
+  return allTasks.filter(t=>t.status===currentFilter);
+}
+async function quickAdd(){
+  const title=document.getElementById('quickAddInput').value.trim();
+  if(!title) return;
+  await addTaskData({title,type:'daily',priority:'medium',scheduled_date:currentDate});
+  document.getElementById('quickAddInput').value='';
+}
+async function addTask(){
+  const title=document.getElementById('taskTitle').value.trim();
+  if(!title) return showToast('Please enter a title','error');
+  await addTaskData({title,type:document.getElementById('taskType').value,priority:document.getElementById('taskPriority').value,scheduled_date:currentDate});
+  document.getElementById('taskTitle').value='';
+}
+async function addTaskData(data){
+  try{
+    const task=await apiCall('/tasks',{method:'POST',body:data});
+    allTasks.push(task); renderTasks(); showToast('Task added!','success');
+  }catch(err){ showToast(err.message,'error'); }
+}
+async function updateStatus(id,curr){
+  const s=['pending','running','done'];
+  const next=s[(s.indexOf(curr)+1)%3];
+  try{
+    const updated=await apiCall(`/tasks/${id}/status`,{method:'PATCH',body:{status:next}});
+    allTasks=allTasks.map(t=>t.id===id?updated:t); renderTasks();
+  }catch(err){ showToast(err.message,'error'); }
+}
+async function deleteTask(id){
+  try{
+    await apiCall(`/tasks/${id}`,{method:'DELETE'});
+    allTasks=allTasks.filter(t=>t.id!==id); renderTasks(); showToast('Task deleted','info');
+  }catch(err){ showToast(err.message,'error'); }
+}
+function updateSummary(){
+  const total=allTasks.length;
+  const done=allTasks.filter(t=>t.status==='done').length;
+  const running=allTasks.filter(t=>t.status==='running').length;
+  const pending=allTasks.filter(t=>t.status==='pending').length;
+  const pct=total>0?Math.round((done/total)*100):0;
+  document.getElementById('ringFill').style.strokeDashoffset=314-(pct/100)*314;
+  document.getElementById('ringPct').textContent=pct+'%';
+  document.getElementById('sumTotal').textContent=total;
+  document.getElementById('sumDone').textContent=done;
+  document.getElementById('sumRunning').textContent=running;
+  document.getElementById('sumPending').textContent=pending;
+}
+function sIcon(s){ return s==='done'?'✓':s==='running'?'▶':s==='skipped'?'⊘':''; }
+function renderTasks(){
+  updateSummary();
+  const filtered=getFiltered();
+  const container=document.getElementById('taskContainer');
+  if(!filtered.length){
+    container.innerHTML=`<div class="empty-tasks"><span class="ei">📋</span><p>No tasks here. Add one above!</p></div>`;
+    return;
+  }
+  const groups={running:[],pending:[],done:[],skipped:[]};
+  filtered.forEach(t=>groups[t.status]?.push(t));
+  const labels={running:'▶ In Progress',pending:'○ Pending',done:'✓ Completed',skipped:'⊘ Skipped'};
+  let html='';
+  for(const [status,tasks] of Object.entries(groups)){
+    if(!tasks.length) continue;
+    html+=`<div class="section-header">${labels[status]} <span style="color:var(--text);font-family:'Syne'">${tasks.length}</span></div>`;
+    tasks.forEach((t,i)=>{
+      html+=`<div class="task-big ${t.status}" style="animation-delay:${i*0.05}s;margin-bottom:8px">
+        <div class="status-circle ${t.status}" onclick="updateStatus(${t.id},'${t.status}')">${sIcon(t.status)}</div>
+        <div class="task-big-content">
+          <div class="task-big-title">${t.title}</div>
+          <div class="task-meta">
+            <div class="pri-dot ${t.priority}"></div>
+            <span>${t.priority} priority</span>
+            <span>•</span>
+            <span class="badge ${t.type==='habit'?'badge-green':t.type==='weekly'?'badge-orange':'badge-purple'}" style="font-size:10px">${t.type}</span>
+          </div>
+        </div>
+        <div class="task-big-actions">
+          <button class="btn btn-danger btn-icon btn-sm" onclick="deleteTask(${t.id})">🗑️</button>
+        </div>
+      </div>`;
+    });
+  }
+  container.innerHTML=html;
+}
+async function loadTasks(){
+  try{ allTasks=await apiCall(`/tasks?date=${currentDate}`); renderTasks(); }
+  catch(err){ showToast('Failed to load tasks','error'); }
+}
+updateDateDisplay();
+loadTasks();
+</script>
+</body>
+</html>

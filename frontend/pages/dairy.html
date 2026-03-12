@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diary — Motitrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/shared.css">
+<style>
+.bg-orbs{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:0;}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);}
+.orb-1{width:500px;height:500px;background:rgba(250,109,154,0.04);top:10%;right:0;}
+.main{position:relative;z-index:1;}
+.diary-layout{display:grid;grid-template-columns:260px 1fr;gap:24px;}
+.diary-sidebar{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 140px);overflow-y:auto;}
+.new-entry-btn{
+  background:linear-gradient(135deg,rgba(124,109,250,0.15),rgba(250,109,154,0.1));
+  border:1px dashed rgba(124,109,250,0.4);border-radius:14px;padding:14px;
+  cursor:pointer;color:var(--accent);font-size:13px;font-weight:500;
+  font-family:'DM Sans';text-align:center;transition:all 0.2s;margin-bottom:4px;
+}
+.new-entry-btn:hover{background:rgba(124,109,250,0.2);}
+.diary-date-btn{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:14px 16px;cursor:pointer;transition:all 0.2s;
+  text-align:left;width:100%;color:var(--text);position:relative;
+}
+.diary-date-btn:hover{border-color:var(--border2);transform:translateX(3px);}
+.diary-date-btn.active{border-color:var(--accent);background:rgba(124,109,250,0.08);}
+.diary-date-btn .de-date{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px;}
+.diary-date-btn .de-preview{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.diary-date-btn .de-mood{position:absolute;top:12px;right:12px;font-size:16px;}
+.diary-editor{
+  background:var(--card);border:1px solid var(--border);border-radius:20px;
+  overflow:hidden;min-height:calc(100vh - 180px);display:flex;flex-direction:column;
+}
+.editor-header{padding:24px 28px 20px;border-bottom:1px solid var(--border);}
+.editor-date{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px;}
+.editor-meta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.mood-select{display:flex;align-items:center;gap:8px;}
+.mood-select label{font-size:12px;color:var(--muted);}
+.mood-emoji-btn{
+  font-size:22px;cursor:pointer;padding:4px;border-radius:8px;
+  transition:all 0.2s;background:transparent;border:1px solid transparent;
+}
+.mood-emoji-btn:hover{background:rgba(255,255,255,0.05);}
+.mood-emoji-btn.active{background:rgba(124,109,250,0.15);border-color:var(--accent);transform:scale(1.2);}
+.meter-row{display:flex;align-items:center;gap:10px;}
+.meter-label{font-size:12px;color:var(--muted);white-space:nowrap;}
+.meter-input{width:80px;accent-color:var(--accent);}
+.meter-val{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;min-width:20px;}
+.editor-body{flex:1;padding:24px 28px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
+.editor-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.diary-textarea{
+  width:100%;background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  border-radius:12px;padding:16px;color:var(--text);
+  font-family:'Lora',serif;font-size:15px;line-height:1.8;
+  resize:none;outline:none;transition:all 0.3s;
+}
+.diary-textarea:focus{border-color:var(--accent);background:rgba(124,109,250,0.03);}
+.diary-textarea::placeholder{color:var(--muted);font-style:italic;}
+#mainContent{min-height:200px;}
+#learnedContent{min-height:100px;}
+.editor-footer{
+  padding:16px 28px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.char-count{font-size:12px;color:var(--muted);}
+.save-indicator{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;}
+.save-indicator.saving{color:var(--accent4);}
+.save-indicator.saved{color:var(--accent3);}
+.tags-input-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;padding:8px 12px;min-height:44px;}
+.tag-chip{background:rgba(124,109,250,0.15);color:var(--accent);padding:3px 10px;border-radius:99px;font-size:12px;display:flex;align-items:center;gap:4px;}
+.tag-chip button{background:transparent;border:none;color:inherit;cursor:pointer;padding:0 2px;font-size:11px;}
+.tags-input{background:transparent;border:none;color:var(--text);font-size:13px;outline:none;min-width:80px;font-family:'DM Sans';}
+.editor-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:40px;}
+.editor-empty .ei{font-size:64px;display:block;margin-bottom:16px;}
+.editor-empty h3{font-family:'Syne',sans-serif;font-size:20px;color:var(--text2);margin-bottom:8px;}
+@media(max-width:900px){
+  .diary-layout{grid-template-columns:1fr;}
+  .diary-sidebar{max-height:200px;flex-direction:row;overflow-x:auto;overflow-y:hidden;}
+  .diary-date-btn{min-width:160px;}
+}
+</style>
+</head>
+<body>
+<div class="bg-orbs"><div class="orb orb-1"></div></div>
+<div id="navMount"></div>
+<main class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📖 Diary</div>
+      <div class="page-subtitle">Your personal journal — write freely</div>
+    </div>
+  </div>
+  <div class="diary-layout">
+    <div>
+      <button class="new-entry-btn" onclick="newEntry()">✦ New Entry</button>
+      <div class="diary-sidebar" id="entriesList">
+        <div class="skeleton" style="height:70px;border-radius:14px;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:70px;border-radius:14px;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:70px;border-radius:14px"></div>
+      </div>
+    </div>
+    <div class="diary-editor">
+      <div class="editor-empty" id="editorEmpty">
+        <span class="ei">✍️</span>
+        <h3>Start Writing</h3>
+        <p>Select an entry or create a new one</p><br>
+        <button class="btn btn-primary" onclick="newEntry()">Write Today's Entry</button>
+      </div>
+      <div id="editorContent" style="display:none;flex:1;flex-direction:column">
+        <div class="editor-header">
+          <div class="editor-date" id="editorDateDisplay"></div>
+          <div class="editor-meta">
+            <div class="mood-select">
+              <label>Mood:</label>
+              <button class="mood-emoji-btn" data-score="2" onclick="setMood(this)">😞</button>
+              <button class="mood-emoji-btn" data-score="4" onclick="setMood(this)">😐</button>
+              <button class="mood-emoji-btn" data-score="6" onclick="setMood(this)">🙂</button>
+              <button class="mood-emoji-btn active" data-score="8" onclick="setMood(this)">😊</button>
+              <button class="mood-emoji-btn" data-score="10" onclick="setMood(this)">🤩</button>
+            </div>
+            <div class="meter-row">
+              <span class="meter-label">⚡ Energy:</span>
+              <input type="range" class="meter-input" id="energySlider" min="1" max="10" value="7" oninput="document.getElementById('energyVal').textContent=this.value">
+              <span class="meter-val" id="energyVal">7</span>
+            </div>
+          </div>
+        </div>
+        <div class="editor-body">
+          <div>
+            <div class="editor-section-title">📌 Title (optional)</div>
+            <input type="text" class="input" id="entryTitle" placeholder="Give today's entry a title...">
+          </div>
+          <div>
+            <div class="editor-section-title">📝 Write about the day</div>
+            <textarea class="diary-textarea" id="mainContent" placeholder="How was your day? What happened? What are you thinking about...?" oninput="updateCharCount()"></textarea>
+          </div>
+          <div>
+            <div class="editor-section-title">💡 New things learned today</div>
+            <textarea class="diary-textarea" id="learnedContent" placeholder="What new things did you learn or discover today?"></textarea>
+          </div>
+          <div>
+            <div class="editor-section-title">🏷️ Tags</div>
+            <div class="tags-input-wrap" id="tagsWrap">
+              <input type="text" class="tags-input" id="tagsInput" placeholder="Type tag + Enter" onkeydown="handleTagInput(event)">
+            </div>
+          </div>
+        </div>
+        <div class="editor-footer">
+          <div>
+            <div class="char-count" id="charCount">0 characters</div>
+            <div class="save-indicator" id="saveIndicator">💾 Auto-saves</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-danger btn-sm" id="deleteEntryBtn" onclick="deleteEntry()" style="display:none">Delete</button>
+            <button class="btn btn-primary" onclick="saveEntry()">Save Entry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="../js/shared.js"></script>
+<script>
+requireAuth();
+document.getElementById('navMount').innerHTML = renderNav('diary');
+
+let entries=[], currentEntryDate=null, currentEntryId=null, moodScore=8, tags=[], saveTimer=null;
+const moods={2:'😞',4:'😐',6:'🙂',8:'😊',10:'🤩'};
+
+function getMoodEmoji(score){ const s=Math.round(score/2)*2; return moods[Math.max(2,Math.min(10,s))]||'😊'; }
+function setMood(btn){ document.querySelectorAll('.mood-emoji-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); moodScore=parseInt(btn.dataset.score); }
+function updateCharCount(){ document.getElementById('charCount').textContent=document.getElementById('mainContent').value.length+' characters'; }
+
+function handleTagInput(e){
+  if(e.key==='Enter'||e.key===','){
+    e.preventDefault();
+    const val=e.target.value.trim().replace(',','');
+    if(val&&!tags.includes(val)){ tags.push(val); renderTags(); }
+    e.target.value='';
+  }
+}
+function renderTags(){
+  const wrap=document.getElementById('tagsWrap');
+  const input=document.getElementById('tagsInput');
+  wrap.innerHTML='';
+  tags.forEach((tag,i)=>{
+    const chip=document.createElement('div');
+    chip.className='tag-chip';
+    chip.innerHTML=`#${tag} <button onclick="removeTag(${i})">✕</button>`;
+    wrap.appendChild(chip);
+  });
+  wrap.appendChild(input);
+}
+function removeTag(i){ tags.splice(i,1); renderTags(); }
+
+function showEditor(entry=null){
+  document.getElementById('editorEmpty').style.display='none';
+  const ec=document.getElementById('editorContent');
+  ec.style.display='flex'; ec.style.flexDirection='column';
+  currentEntryDate=entry?entry.entry_date?.split('T')[0]:today();
+  currentEntryId=entry?.id||null;
+  document.getElementById('editorDateDisplay').textContent=formatDateLong(currentEntryDate);
+  document.getElementById('entryTitle').value=entry?.title||'';
+  document.getElementById('mainContent').value=entry?.content||'';
+  document.getElementById('learnedContent').value=entry?.new_things_learned||'';
+  moodScore=entry?.mood_score||8;
+  document.querySelectorAll('.mood-emoji-btn').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.score)===moodScore));
+  document.getElementById('energySlider').value=entry?.energy_level||7;
+  document.getElementById('energyVal').textContent=entry?.energy_level||7;
+  tags=entry?.tags?entry.tags.split(',').filter(Boolean):[];
+  renderTags();
+  document.getElementById('deleteEntryBtn').style.display=entry?'block':'none';
+  updateCharCount();
+  clearTimeout(saveTimer);
+  document.getElementById('mainContent').oninput=()=>{ updateCharCount(); scheduleAutoSave(); };
+  document.getElementById('learnedContent').oninput=scheduleAutoSave;
+}
+
+function scheduleAutoSave(){
+  clearTimeout(saveTimer);
+  const ind=document.getElementById('saveIndicator');
+  ind.textContent='⏳ Saving...'; ind.className='save-indicator saving';
+  saveTimer=setTimeout(async()=>{
+    await saveEntry(true);
+    ind.textContent='✅ Saved'; ind.className='save-indicator saved';
+    setTimeout(()=>{ ind.textContent='💾 Auto-saves'; ind.className='save-indicator'; },2000);
+  },1500);
+}
+
+async function saveEntry(silent=false){
+  const content=document.getElementById('mainContent').value.trim();
+  if(!content){ if(!silent) showToast('Please write something first','error'); return; }
+  try{
+    await apiCall('/diary',{method:'POST',body:{
+      content,new_things_learned:document.getElementById('learnedContent').value,
+      mood_score:moodScore,energy_level:parseInt(document.getElementById('energySlider').value),
+      tags:tags.join(','),title:document.getElementById('entryTitle').value,
+      entry_date:currentEntryDate
+    }});
+    if(!silent) showToast('Entry saved! ✨','success');
+    loadEntries();
+  }catch(err){ if(!silent) showToast(err.message,'error'); }
+}
+
+async function deleteEntry(){
+  if(!currentEntryId) return;
+  if(!confirm('Delete this diary entry?')) return;
+  try{
+    await apiCall(`/diary/${currentEntryId}`,{method:'DELETE'});
+    showToast('Entry deleted','info');
+    document.getElementById('editorContent').style.display='none';
+    document.getElementById('editorEmpty').style.display='flex';
+    loadEntries();
+  }catch(err){ showToast(err.message,'error'); }
+}
+
+function newEntry(){
+  const todayEntry=entries.find(e=>e.entry_date?.split('T')[0]===today());
+  showEditor(todayEntry||null);
+  document.querySelectorAll('.diary-date-btn').forEach(b=>b.classList.remove('active'));
+}
+
+function renderEntries(data){
+  const list=document.getElementById('entriesList');
+  if(!data.length){
+    list.innerHTML=`<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No entries yet.<br>Start writing!</div>`;
+    return;
+  }
+  list.innerHTML=data.map(e=>{
+    const date=e.entry_date?.split('T')[0];
+    return `<button class="diary-date-btn" data-date="${date}" onclick="loadEntry('${date}')">
+      <div class="de-date">${formatDate(date)}</div>
+      <div class="de-preview">${e.content?.substring(0,50)||'No content'}...</div>
+      <div class="de-mood">${getMoodEmoji(e.mood_score)}</div>
+    </button>`;
+  }).join('');
+}
+
+async function loadEntry(date){
+  try{
+    const entry=await apiCall(`/diary/date/${date}`);
+    showEditor(entry);
+    document.querySelectorAll('.diary-date-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelector(`[data-date="${date}"]`)?.classList.add('active');
+  }catch(err){ showToast('Entry not found','error'); }
+}
+
+async function loadEntries(){
+  try{
+    const data=await apiCall('/diary?limit=30');
+    entries=data.entries||[];
+    renderEntries(entries);
+  }catch(err){ showToast('Failed to load entries','error'); }
+}
+
+loadEntries().then(()=>{
+  const todayEntry=entries.find(e=>e.entry_date?.split('T')[0]===today());
+  if(todayEntry){ showEditor(todayEntry); document.querySelector(`[data-date="${today()}"]`)?.classList.add('active'); }
+});
+</script>
+</body>
+</html>
