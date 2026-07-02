@@ -243,7 +243,7 @@ async function handleLogin() {
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data.user));
     showAlert('Welcome back! Redirecting...','success');
-    setTimeout(()=>window.location.href='/pages/dashboard.html', 800);
+    window.location.href = '/pages/dashboard.html';
   } catch(err) {
     showAlert(err.message||'Login failed.');
   } finally {

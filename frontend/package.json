@@ -1,0 +1,11 @@
+{
+  "name": "motitrack-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npx http-server ./ -p 3000 -c-1"
+  },
+  "description": "Static frontend for Motitrack - lightweight start script using http-server via npx",
+  "author": "",
+  "license": "ISC"
+}
